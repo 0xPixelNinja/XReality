@@ -39,6 +39,8 @@ services:
       - PANEL_PORT=${PANEL_PORT:-3000}
       - PANEL_PASSWORD=${PANEL_PASSWORD:-}
       - SERVER_IP=${SERVER_IP:-}
+    expose:
+      - "3000"
     volumes:
       - config-data:/data
     read_only: true
@@ -53,6 +55,14 @@ services:
         limits:
           memory: 64M
           cpus: "0.5"
+    networks:
+      - default
+      - coolify
+
+networks:
+  coolify:
+    external: true
+  default:
 
 volumes:
   config-data:
