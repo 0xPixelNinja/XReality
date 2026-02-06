@@ -1,8 +1,0 @@
-.git/
-.gitignore
-.env
-.env.*
-*.md
-LICENSE
-node_modules/
-npm-debug.log
