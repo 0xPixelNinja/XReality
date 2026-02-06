@@ -185,6 +185,13 @@ main {
   margin-bottom: 20px;
 }
 
+.pq-notice {
+  color: var(--danger);
+  font-size: 0.75rem;
+  margin-top: -12px;
+  margin-bottom: 16px;
+}
+
 /* Detail Rows */
 
 .detail-list {

@@ -61,8 +61,14 @@ async function getExternalIP() {
   return 'UNKNOWN';
 }
 
-function buildShareLink(uuid, ip, port, publicKey, sni, shortId) {
-  return `vless://${uuid}@${ip}:${port}?security=reality&encryption=none&pbk=${publicKey}&headerType=none&fp=chrome&type=tcp&flow=xtls-rprx-vision&sni=${sni}&sid=${shortId}#XReality`;
+function buildShareLink(uuid, ip, port, publicKey, sni, shortId, pq = null) {
+  const encryption = pq?.vlessEncryption || 'none';
+  let link = `vless://${uuid}@${ip}:${port}?security=reality&encryption=${encodeURIComponent(encryption)}&pbk=${publicKey}&headerType=none&fp=chrome&type=tcp&flow=xtls-rprx-vision&sni=${sni}&sid=${shortId}`;
+  if (pq?.mldsa65Verify) {
+    link += `&mldsa65Verify=${encodeURIComponent(pq.mldsa65Verify)}`;
+  }
+  link += '#XReality';
+  return link;
 }
 
 app.get('/api/status', async (_req, res) => {
@@ -111,23 +117,27 @@ app.get('/api/connection', async (_req, res) => {
 });
 
 app.get('/api/link', async (_req, res) => {
-  const [uuid, publicKey, sni, shortId, ip, port] = await Promise.all([
+  const [uuid, publicKey, sni, shortId, ip, port, enablePq, mldsa65Verify, vlessEnc] = await Promise.all([
     readConfig('uuid'), readConfig('public_key'),
     readConfig('sni'), readConfig('short_id'), getExternalIP(), readConfig('port'),
+    readConfig('enable_pq'), readConfig('mldsa65_verify'), readConfig('vlessenc_encryption'),
   ]);
   if (!uuid) return res.status(503).json({ error: 'Not initialized' });
   const extPort = parseInt(port, 10) || 443;
-  res.json({ link: buildShareLink(uuid, ip, extPort, publicKey, sni, shortId) });
+  const pq = enablePq === 'true' ? { mldsa65Verify: mldsa65Verify || '', vlessEncryption: vlessEnc || '' } : null;
+  res.json({ link: buildShareLink(uuid, ip, extPort, publicKey, sni, shortId, pq), pqEnabled: enablePq === 'true' });
 });
 
 app.get('/api/qr', async (_req, res) => {
-  const [uuid, publicKey, sni, shortId, ip, port] = await Promise.all([
+  const [uuid, publicKey, sni, shortId, ip, port, enablePq, mldsa65Verify, vlessEnc] = await Promise.all([
     readConfig('uuid'), readConfig('public_key'),
     readConfig('sni'), readConfig('short_id'), getExternalIP(), readConfig('port'),
+    readConfig('enable_pq'), readConfig('mldsa65_verify'), readConfig('vlessenc_encryption'),
   ]);
   if (!uuid) return res.status(503).json({ error: 'Not initialized' });
   const extPort = parseInt(port, 10) || 443;
-  const link = buildShareLink(uuid, ip, extPort, publicKey, sni, shortId);
+  const pq = enablePq === 'true' ? { mldsa65Verify: mldsa65Verify || '', vlessEncryption: vlessEnc || '' } : null;
+  const link = buildShareLink(uuid, ip, extPort, publicKey, sni, shortId, pq);
   try {
     const qr = await QRCode.toDataURL(link, { width: 320, margin: 2, color: { dark: '#e2e8f0', light: '#00000000' } });
     res.json({ qr, link });

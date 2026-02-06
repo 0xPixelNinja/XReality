@@ -88,6 +88,8 @@ async function init() {
       $pqSection.classList.remove('hidden');
       document.getElementById('val-mldsa').textContent = conn.pq.mldsa65Verify || '-';
       document.getElementById('val-vlessenc').textContent = conn.pq.vlessEncryption || '-';
+      const pqNotice = document.getElementById('pq-client-notice');
+      if (pqNotice) pqNotice.classList.remove('hidden');
     }
 
     // QR code

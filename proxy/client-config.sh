@@ -53,7 +53,15 @@ case "${CMD}" in
     UUID=$(cat "${CONFIG_DIR}/uuid")
     PUB_KEY=$(cat "${CONFIG_DIR}/public_key")
     SID="${SHORT_ID:-}"
-    LINK="vless://${UUID}@${EXT_IP}:${PORT}?security=reality&encryption=none&pbk=${PUB_KEY}&headerType=none&fp=chrome&type=tcp&flow=xtls-rprx-vision&sni=${SNI}&sid=${SID}#XReality"
+    ENCRYPTION="none"
+    MLDSA_PARAM=""
+    if [[ "${ENABLE_PQ:-true}" == "true" ]] && [[ -f "${CONFIG_DIR}/vlessenc_encryption" ]]; then
+      ENCRYPTION=$(cat "${CONFIG_DIR}/vlessenc_encryption")
+    fi
+    if [[ "${ENABLE_PQ:-true}" == "true" ]] && [[ -f "${CONFIG_DIR}/mldsa65_verify" ]]; then
+      MLDSA_PARAM="&mldsa65Verify=$(cat "${CONFIG_DIR}/mldsa65_verify")"
+    fi
+    LINK="vless://${UUID}@${EXT_IP}:${PORT}?security=reality&encryption=${ENCRYPTION}&pbk=${PUB_KEY}&headerType=none&fp=chrome&type=tcp&flow=xtls-rprx-vision&sni=${SNI}&sid=${SID}${MLDSA_PARAM}#XReality"
     echo "${LINK}"
     ;;
   qr)
