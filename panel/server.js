@@ -47,9 +47,12 @@ const IP_CACHE_TTL = 300_000;
 async function getExternalIP() {
   if (SERVER_IP) return SERVER_IP;
   if (ipCache && Date.now() - ipCacheTime < IP_CACHE_TTL) return ipCache;
-  for (const url of ['https://ifconfig.me', 'https://icanhazip.com', 'https://api.ipify.org']) {
+  for (const url of ['https://ifconfig.me/ip', 'https://icanhazip.com', 'https://api.ipify.org']) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(5000),
+        headers: { 'Accept': 'text/plain', 'User-Agent': 'curl/8.0' },
+      });
       ipCache = (await res.text()).trim();
       ipCacheTime = Date.now();
       return ipCache;
@@ -125,8 +128,12 @@ app.get('/api/qr', async (_req, res) => {
   if (!uuid) return res.status(503).json({ error: 'Not initialized' });
   const extPort = parseInt(port, 10) || 443;
   const link = buildShareLink(uuid, ip, extPort, publicKey, sni, shortId);
-  const qr = await QRCode.toDataURL(link, { width: 320, margin: 2, color: { dark: '#e2e8f0', light: '#00000000' } });
-  res.json({ qr, link });
+  try {
+    const qr = await QRCode.toDataURL(link, { width: 320, margin: 2, color: { dark: '#e2e8f0', light: '#00000000' } });
+    res.json({ qr, link });
+  } catch {
+    res.status(422).json({ error: 'Link too long for QR code', link });
+  }
 });
 
 app.get('/api/config/download', async (_req, res) => {
