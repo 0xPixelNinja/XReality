@@ -39,8 +39,6 @@ services:
       - PANEL_PORT=${PANEL_PORT:-3000}
       - PANEL_PASSWORD=${PANEL_PASSWORD:-}
       - SERVER_IP=${SERVER_IP:-}
-    ports:
-      - "${PANEL_PORT:-3000}:3000"
     volumes:
       - config-data:/data
     read_only: true
