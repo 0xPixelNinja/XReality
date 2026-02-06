@@ -1,54 +1,54 @@
 # XReality
 
-A self-hosted VLESS + Reality proxy server with a **web management panel**, post-quantum cryptography, and one-command deployment. Designed for PaaS platforms like Coolify, CapRover, or any Docker host.
+VLESS + Reality proxy with a web panel, post-quantum cryptography, and Docker Compose deployment.
 
 ## Features
 
-- **Xray-core v26.2.6** with VLESS + Vision + Reality
-- **Web panel** for managing connections, QR codes, and client configs
-- **Post-quantum cryptography** -- ML-KEM-768 + ML-DSA-65 (enabled by default)
-- **One-command deploy** -- `make up` or `docker compose up -d`
-- **PaaS-ready** -- `.env`-driven config, health checks, Coolify/CapRover compatible
-- **Hardened** -- non-root containers, read-only filesystems, resource limits
-- **Multi-arch** -- `linux/amd64` + `linux/arm64`
+- **Xray-core v26.2.6** -- VLESS + Vision + Reality
+- **Web panel** -- connection details, QR codes, share links, client config downloads
+- **Post-quantum cryptography** -- ML-KEM-768 + ML-DSA-65 (on by default)
+- **Hardened containers** -- non-root, read-only filesystems, resource limits, no privilege escalation
+- **Auto key generation** -- UUID, x25519, ML-DSA-65, and VLESS encryption keys created on first boot
 
-## Quick Start
+## Prerequisites
+
+- A VPS running Linux (Ubuntu, Debian, etc.)
+- Docker Engine 24+ and Docker Compose v2
+- Ports `443` and `3000` open in your firewall
+
+Install Docker if you don't have it:
 
 ```bash
-git clone <your-repo-url>
-cd xreality
-cp .env.example .env    # edit settings if needed
-make up
+curl -fsSL https://get.docker.com | sh
 ```
 
-Open `http://your-server:3000` to access the panel.
+## Install
 
-The proxy listens on port 443, the panel on port 3000. All keys are auto-generated on first run.
-
-## Architecture
-
+```bash
+git clone https://github.com/your-user/xtls-reality-docker.git
+cd xtls-reality-docker
+cp .env.example .env
 ```
-docker compose up
-       |
-       |- proxy  (Alpine + Xray-core)  -> port 443
-       |    Generates keys on first boot
-       |    Writes config to shared volume
-       |
-       |- panel  (Node.js + Express)   -> port 3000
-            Reads keys from shared volume
-            Serves web dashboard + API
-       |
-       [config-data volume]
-         uuid, public_key, private_key
-         mldsa65_seed, mldsa65_verify
-         vlessenc_decryption, vlessenc_encryption
-         sni, short_id, enable_pq
-         config.json (generated at startup)
+
+Edit `.env` to set at minimum:
+
+```bash
+PANEL_PASSWORD=your-strong-password
 ```
+
+Then start:
+
+```bash
+docker compose up -d --build
+```
+
+That's it. The proxy runs on `:443` and the panel on `:3000`. All keys are generated automatically on first boot.
+
+Open `http://<your-server-ip>:3000` (user: `admin`, password: your `PANEL_PASSWORD`).
 
 ## Configuration
 
-All settings are managed via `.env` file (copied from `.env.example`):
+All settings live in `.env`:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -59,137 +59,130 @@ All settings are managed via `.env` file (copied from `.env.example`):
 | `PROXY_PORT` | Host port for the proxy | `443` |
 | `PANEL_PORT` | Host port for the web panel | `3000` |
 | `PANEL_PASSWORD` | Panel login password (user: `admin`). Empty = no auth | _(empty)_ |
-| `SERVER_IP` | Override auto-detected IP (for NAT/PaaS/CDN) | _(auto)_ |
+| `SERVER_IP` | Override auto-detected public IP (for NAT/CDN) | _(auto)_ |
 
-## Web Panel
-
-The panel provides:
-
-- **Connection details** -- server IP, UUID, public key, SNI, short ID
-- **QR code** -- scan with v2rayNG, Hiddify, Streisand, or any VLESS client
-- **Copy share link** -- `vless://` URI for one-click import
-- **Download JSON** -- ready-to-import client outbound config
-- **Post-quantum info** -- ML-DSA-65 verify key and VLESS encryption string
-- **Regenerate keys** -- invalidate all clients and generate fresh credentials
-
-The panel is protected with HTTP Basic Auth when `PANEL_PASSWORD` is set.
-
-## CLI Access
-
-All panel operations are also available via the proxy container's CLI:
+After changing `.env`, apply with:
 
 ```bash
-docker exec xreality-proxy bash ./client-config.sh show
-docker exec xreality-proxy bash ./client-config.sh link
-docker exec xreality-proxy bash ./client-config.sh qr
-docker exec xreality-proxy bash ./client-config.sh json
-docker exec xreality-proxy bash ./client-config.sh regenerate
+docker compose up -d --build
 ```
 
-Or via Make targets: `make client-show`, `make client-qr`, etc.
+### Common scenarios
 
-## Makefile Targets
+**Port 443 is already in use** (e.g. by nginx):
 
-| Target | Description |
-|--------|-------------|
-| `make up` | Build and start everything |
-| `make down` | Stop and remove containers |
-| `make build` | Rebuild images without cache |
-| `make restart` | Restart all services |
-| `make logs` | Tail all container logs |
-| `make logs-proxy` | Tail proxy logs only |
-| `make logs-panel` | Tail panel logs only |
-| `make client-show` | Print connection details (CLI) |
-| `make client-link` | Print share link (CLI) |
-| `make client-qr` | Show QR code in terminal (CLI) |
-| `make client-json` | Output client JSON (CLI) |
-| `make regenerate` | Regenerate keys and restart proxy |
-| `make clean` | Remove containers, volumes, and images |
+```env
+PROXY_PORT=8443
+```
 
-## PaaS Deployment
+Clients will connect to `your-server:8443` instead.
 
-### Coolify
+**VPS is behind NAT** or IP detection returns the wrong address:
 
-Coolify's Traefik proxy already occupies port 443. The VLESS Reality protocol is raw TLS (not HTTP), so it **cannot** be routed through Traefik. Use a different port for the proxy:
+```env
+SERVER_IP=203.0.113.10
+```
 
-1. Create a new service from a **Docker Compose** source.
-2. Point to your Git repository.
-3. Set environment variables in the Coolify UI -- critically:
-   - `PROXY_PORT=8443` (or any port not used by Traefik: 2053, 2083, 2087, etc.)
-   - `SERVER_IP=<your-server-public-ip>`
-   - `PANEL_PASSWORD=<something-strong>`
-4. Let Coolify handle the panel service normally (assign a domain, it gets SSL via Traefik).
-5. The proxy port (`8443`) must be directly exposed on the host firewall.
-6. Deploy. Clients connect to `your-server:8443`.
+## Usage
 
-### CapRover / Other PaaS
+### Web Panel
 
-Same principle -- set `PROXY_PORT` to avoid conflicts with the platform's reverse proxy. The panel can sit behind the platform's proxy since it's standard HTTP.
+Open `http://<your-server-ip>:3000` to:
 
-### Important for PaaS
+- View connection details (IP, UUID, public key, SNI, short ID)
+- Scan a QR code with v2rayNG, Hiddify, Streisand, or FoXray
+- Copy a `vless://` share link
+- Download a ready-to-import client JSON config
+- View post-quantum keys (ML-DSA-65 verify, VLESS encryption)
+- Regenerate all keys (invalidates existing clients)
 
-- Set `SERVER_IP` -- auto-detection may not work behind NAT/load balancers.
-- Set `PANEL_PASSWORD` -- the panel will be publicly accessible.
-- Set `PROXY_PORT` to a non-443 port if 443 is taken by the platform.
+### CLI
 
-## Connecting Clients
+Same operations available from the terminal:
 
-### Mobile (Android / iOS)
+```bash
+docker exec xreality-proxy bash ./client-config.sh show         # print connection details
+docker exec xreality-proxy bash ./client-config.sh link         # vless:// share URI
+docker exec xreality-proxy bash ./client-config.sh qr           # QR code in terminal
+docker exec xreality-proxy bash ./client-config.sh json         # full client JSON config
+docker exec xreality-proxy bash ./client-config.sh regenerate   # regenerate keys
+```
 
-1. Open the panel at `http://your-server:3000`
-2. Scan the QR code with v2rayNG, Hiddify, Streisand, or FoXray
-3. The connection is auto-configured
+### Connecting Clients
 
-### Desktop
+**Mobile** -- open the panel, scan the QR code with your VLESS client app.
 
-1. Click "Copy Share Link" in the panel and paste into your client
-2. Or click "Download JSON" and import the config file
+**Desktop** -- click "Copy Share Link" and paste into your client, or click "Download JSON" and import the file.
+
+## Common Commands
+
+```bash
+docker compose up -d --build    # start / rebuild
+docker compose down             # stop
+docker compose restart          # restart
+docker compose logs -f          # tail logs
+docker compose logs -f proxy    # proxy logs only
+docker compose logs -f panel    # panel logs only
+docker compose down -v --rmi local  # remove everything including volumes
+```
+
+A `Makefile` is included as a shorthand -- run `make up`, `make down`, `make logs`, `make client-qr`, etc.
+
+## Architecture
+
+```
+docker compose up -d
+        |
+        |- proxy  (Alpine + Xray-core)  -> :443
+        |    Generates keys on first boot
+        |    Writes config to shared volume
+        |
+        |- panel  (Node.js + Express)   -> :3000
+        |    Reads keys from shared volume
+        |    Serves web dashboard + API
+        |
+        [config-data volume]
+          uuid, public_key, private_key
+          mldsa65_seed, mldsa65_verify
+          vlessenc_decryption, vlessenc_encryption
+          sni, short_id, enable_pq
+          config.json
+```
 
 ## Security
 
-| Measure | Implementation |
-|---------|---------------|
-| Non-root execution | Proxy runs as `xray`, panel runs as `node` |
+| Measure | Detail |
+|---------|--------|
+| Non-root | Proxy runs as `xray:1000`, panel runs as `node` |
 | Read-only filesystem | Both containers use `read_only: true` |
-| Privilege escalation blocked | `no-new-privileges` on both containers |
-| Resource limits | Proxy: 128MB / 1 CPU; Panel: 64MB / 0.5 CPU |
+| No privilege escalation | `no-new-privileges` security option |
+| Resource limits | Proxy: 128 MB / 1 CPU -- Panel: 64 MB / 0.5 CPU |
 | Private IP blocking | Routing rule blocks `geoip:private` |
-| QUIC sniffing | Prevents protocol bypass |
-| Minimum client version | Rejects Xray clients older than v26.1.23 |
-| Panel auth | HTTP Basic Auth via `PANEL_PASSWORD` |
+| Sniffing | HTTP, TLS, QUIC sniffing enabled |
+| Min client version | Rejects Xray clients older than v26.1.23 |
+| Panel auth | HTTP Basic Auth when `PANEL_PASSWORD` is set |
 | Health checks | TCP probe on proxy, HTTP probe on panel |
 
 ## Project Structure
 
 ```
 .
-├── docker-compose.yaml       # Two-service orchestration
-├── .env.example              # All configurable settings
-├── Makefile                  # Convenience targets
+├── docker-compose.yaml        # service orchestration
+├── Dockerfile                 # multi-stage build (proxy + panel)
+├── .env.example               # configuration template
+├── Makefile                   # shorthand commands
 ├── proxy/
-│   ├── Dockerfile            # Alpine + xray binary from official GHCR image
-│   ├── config.template.json  # Xray config (jq placeholders)
-│   ├── entrypoint.sh         # Key generation + config build + exec xray
-│   ├── client-config.sh      # CLI config tool (show/link/qr/json/regenerate)
-│   └── .dockerignore
-├── panel/
-│   ├── Dockerfile            # Node 22 Alpine
-│   ├── package.json
-│   ├── server.js             # Express API + Basic Auth
-│   ├── .dockerignore
-│   └── public/
-│       ├── index.html        # Dashboard SPA
-│       ├── css/styles.css    # Dark theme
-│       └── js/app.js         # Client-side logic
-└── LICENSE
+│   ├── config.template.json   # xray config template (jq-substituted)
+│   ├── entrypoint.sh          # key generation + config build + xray exec
+│   └── client-config.sh       # CLI tool (show/link/qr/json/regenerate)
+└── panel/
+    ├── package.json
+    ├── server.js              # Express API + Basic Auth
+    └── public/
+        ├── index.html
+        ├── css/styles.css
+        └── js/app.js
 ```
-
-## Sources
-
-| Resource | URL |
-|----------|-----|
-| Xray-core | https://github.com/XTLS/Xray-core |
-| XTLS Documentation | https://xtls.github.io |
 
 ## License
 

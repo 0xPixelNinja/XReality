@@ -1,5 +1,6 @@
 services:
   panel:
+    container_name: xreality-panel
     build:
       context: .
       dockerfile: Dockerfile
@@ -10,8 +11,8 @@ services:
       - PANEL_PORT=${PANEL_PORT:-3000}
       - PANEL_PASSWORD=${PANEL_PASSWORD:-}
       - SERVER_IP=${SERVER_IP:-}
-    expose:
-      - "3000"
+    ports:
+      - "${PANEL_PORT:-3000}:3000"
     volumes:
       - config-data:/data
     read_only: true
@@ -27,9 +28,6 @@ services:
         limits:
           memory: 64M
           cpus: "0.5"
-    networks:
-      - default
-      - coolify
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/status"]
       interval: 10s
@@ -38,6 +36,7 @@ services:
       retries: 3
 
   proxy:
+    container_name: xreality-proxy
     build:
       context: .
       dockerfile: Dockerfile
@@ -48,9 +47,9 @@ services:
       - SHORT_ID=${SHORT_ID:-}
       - ENABLE_PQ=${ENABLE_PQ:-true}
       - ENABLE_STATS=${ENABLE_STATS:-false}
-      - PROXY_PORT=${PROXY_PORT:-8443}
+      - PROXY_PORT=${PROXY_PORT:-443}
     ports:
-      - "${PROXY_PORT:-8443}:443"
+      - "${PROXY_PORT:-443}:443"
     volumes:
       - config-data:/opt/xray/config
     read_only: true
@@ -63,14 +62,5 @@ services:
         limits:
           memory: 128M
           cpus: "1.0"
-    networks:
-      - default
-      - coolify
-
-networks:
-  coolify:
-    external: true
-  default:
-
 volumes:
   config-data:
