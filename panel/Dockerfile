@@ -2,10 +2,11 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-COPY package.json ./
+COPY panel/package.json ./
 RUN npm install --production && npm cache clean --force
 
-COPY . .
+COPY panel/server.js .
+COPY panel/public/ ./public/
 
 RUN addgroup -g 1000 -S app 2>/dev/null || true && \
     chown -R node:node /app

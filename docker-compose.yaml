@@ -1,8 +1,8 @@
 services:
   proxy:
     build:
-      context: ./proxy
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: proxy/Dockerfile
     container_name: xreality-proxy
     restart: always
     environment:
@@ -28,8 +28,8 @@ services:
 
   panel:
     build:
-      context: ./panel
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: panel/Dockerfile
     container_name: xreality-panel
     restart: always
     environment:

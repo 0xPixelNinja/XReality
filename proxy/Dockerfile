@@ -18,9 +18,9 @@ COPY --from=xray-bin /usr/local/share/xray/ /usr/local/share/xray/
 
 WORKDIR /opt/xray
 
-COPY --chown=xray:app config.template.json config/config.template.json
-COPY --chown=xray:app entrypoint.sh .
-COPY --chown=xray:app client-config.sh .
+COPY --chown=xray:app proxy/config.template.json config/config.template.json
+COPY --chown=xray:app proxy/entrypoint.sh .
+COPY --chown=xray:app proxy/client-config.sh .
 RUN chmod +x entrypoint.sh client-config.sh
 
 USER xray
