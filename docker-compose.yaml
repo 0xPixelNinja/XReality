@@ -4,7 +4,6 @@ services:
       context: .
       dockerfile: Dockerfile
       target: proxy
-    container_name: xreality-proxy
     restart: always
     environment:
       - SNI=${SNI:-www.samsung.com}
@@ -32,7 +31,6 @@ services:
       context: .
       dockerfile: Dockerfile
       target: panel
-    container_name: xreality-panel
     restart: always
     environment:
       - CONFIG_DIR=/data
