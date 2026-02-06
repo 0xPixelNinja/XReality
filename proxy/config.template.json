@@ -1,0 +1,73 @@
+{
+  "version": {
+    "min": "26.2.6"
+  },
+  "log": {
+    "loglevel": "warning"
+  },
+  "stats": {},
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      {
+        "type": "field",
+        "outboundTag": "block",
+        "ip": [
+          "geoip:private"
+        ]
+      }
+    ]
+  },
+  "inbounds": [
+    {
+      "listen": "0.0.0.0",
+      "port": 443,
+      "protocol": "vless",
+      "tag": "vless_reality",
+      "settings": {
+        "clients": [
+          {
+            "id": "__UUID__",
+            "flow": "xtls-rprx-vision"
+          }
+        ],
+        "decryption": "__DECRYPTION__"
+      },
+      "streamSettings": {
+        "network": "raw",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "target": "__SNI__:443",
+          "serverNames": [
+            "__SNI__"
+          ],
+          "privateKey": "__PRIVATE_KEY__",
+          "shortIds": [
+            "__SHORT_ID__"
+          ],
+          "minClientVer": "26.1.23",
+          "maxTimeDiff": 0
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls",
+          "quic"
+        ]
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "tag": "direct"
+    },
+    {
+      "protocol": "blackhole",
+      "tag": "block"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+services:
+  proxy:
+    build: ./proxy
+    container_name: xreality-proxy
+    restart: always
+    environment:
+      - SNI=${SNI:-www.samsung.com}
+      - SHORT_ID=${SHORT_ID:-}
+      - ENABLE_PQ=${ENABLE_PQ:-true}
+      - ENABLE_STATS=${ENABLE_STATS:-false}
+      - PROXY_PORT=${PROXY_PORT:-443}
+    ports:
+      - "${PROXY_PORT:-443}:443"
+    volumes:
+      - config-data:/opt/xray/config
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "1.0"
+
+  panel:
+    build: ./panel
+    container_name: xreality-panel
+    restart: always
+    environment:
+      - CONFIG_DIR=/data
+      - PANEL_PORT=${PANEL_PORT:-3000}
+      - PANEL_PASSWORD=${PANEL_PASSWORD:-}
+      - SERVER_IP=${SERVER_IP:-}
+    ports:
+      - "${PANEL_PORT:-3000}:3000"
+    volumes:
+      - config-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - proxy
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: "0.5"
+
+volumes:
+  config-data:
