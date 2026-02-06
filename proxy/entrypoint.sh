@@ -25,19 +25,26 @@ if [[ ! -f "${LOCKFILE}" ]]; then
   echo "UUID: $(cat "${CONFIG_DIR}/uuid")"
 
   X25519_OUTPUT=$(xray x25519)
-  echo "${X25519_OUTPUT}" | awk '/Private/{print $3}' > "${CONFIG_DIR}/private_key"
-  echo "${X25519_OUTPUT}" | awk '/Public/{print $3}' > "${CONFIG_DIR}/public_key"
+  echo "${X25519_OUTPUT}" | awk '/PrivateKey/{print $2}' > "${CONFIG_DIR}/private_key"
+  echo "${X25519_OUTPUT}" | awk '/Password/{print $2}' > "${CONFIG_DIR}/public_key"
   echo "x25519 keypair generated"
 
   MLDSA_OUTPUT=$(xray mldsa65)
-  echo "${MLDSA_OUTPUT}" | awk '/Seed/{print $3}' > "${CONFIG_DIR}/mldsa65_seed"
-  echo "${MLDSA_OUTPUT}" | awk '/Verify/{print $3}' > "${CONFIG_DIR}/mldsa65_verify"
+  echo "${MLDSA_OUTPUT}" | awk '/Seed/{print $2}' > "${CONFIG_DIR}/mldsa65_seed"
+  echo "${MLDSA_OUTPUT}" | awk '/Verify/{print $2}' > "${CONFIG_DIR}/mldsa65_verify"
   echo "ML-DSA-65 keypair generated"
 
   VLESSENC_OUTPUT=$(xray vlessenc)
-  echo "${VLESSENC_OUTPUT}" | awk '/decryption/{print $3}' > "${CONFIG_DIR}/vlessenc_decryption"
-  echo "${VLESSENC_OUTPUT}" | awk '/encryption/{print $3}' > "${CONFIG_DIR}/vlessenc_encryption"
+  echo "${VLESSENC_OUTPUT}" | awk '/"decryption"/{gsub(/"/, "", $2); print $2; exit}' > "${CONFIG_DIR}/vlessenc_decryption"
+  echo "${VLESSENC_OUTPUT}" | awk '/"encryption"/{gsub(/"/, "", $2); print $2; exit}' > "${CONFIG_DIR}/vlessenc_encryption"
   echo "VLESS encryption pair generated"
+
+  for f in uuid private_key public_key mldsa65_seed mldsa65_verify vlessenc_decryption vlessenc_encryption; do
+    if [[ ! -s "${CONFIG_DIR}/${f}" ]]; then
+      echo "FATAL: ${f} is empty after generation. Aborting." >&2
+      exit 1
+    fi
+  done
 
   touch "${LOCKFILE}"
   echo "Lockfile created -- keys will persist across restarts"
