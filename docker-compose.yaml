@@ -1,31 +1,4 @@
 services:
-  proxy:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: proxy
-    restart: always
-    environment:
-      - SNI=${SNI:-www.samsung.com}
-      - SHORT_ID=${SHORT_ID:-}
-      - ENABLE_PQ=${ENABLE_PQ:-true}
-      - ENABLE_STATS=${ENABLE_STATS:-false}
-      - PROXY_PORT=${PROXY_PORT:-443}
-    ports:
-      - "${PROXY_PORT:-443}:443"
-    volumes:
-      - config-data:/opt/xray/config
-    read_only: true
-    tmpfs:
-      - /tmp
-    security_opt:
-      - no-new-privileges:true
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-          cpus: "1.0"
-
   panel:
     build:
       context: .
@@ -47,12 +20,49 @@ services:
     security_opt:
       - no-new-privileges:true
     depends_on:
-      - proxy
+      proxy:
+        condition: service_started
     deploy:
       resources:
         limits:
           memory: 64M
           cpus: "0.5"
+    networks:
+      - default
+      - coolify
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/status"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: proxy
+    restart: always
+    environment:
+      - SNI=${SNI:-www.samsung.com}
+      - SHORT_ID=${SHORT_ID:-}
+      - ENABLE_PQ=${ENABLE_PQ:-true}
+      - ENABLE_STATS=${ENABLE_STATS:-false}
+      - PROXY_PORT=${PROXY_PORT:-8443}
+    ports:
+      - "${PROXY_PORT:-8443}:443"
+    volumes:
+      - config-data:/opt/xray/config
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "1.0"
     networks:
       - default
       - coolify
